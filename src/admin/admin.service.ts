@@ -218,6 +218,48 @@ export class AdminService {
       delete productData.brand;
     }
 
+    // Get existing product first (we'll need it later anyway)
+    const existingProduct = await this.productRepository.findOne({ 
+      where: { id },
+      relations: ['category', 'brandEntity', 'subcategory']
+    });
+    if (!existingProduct) {
+      throw new Error(`Product with ID ${id} not found`);
+    }
+    
+    const existingCategoryId = existingProduct.categoryId;
+    console.log('  Processing categoryId...');
+    console.log('    categoryId in request:', productData.categoryId, '(type:', typeof productData.categoryId, ')');
+    console.log('    Existing categoryId:', existingCategoryId);
+    
+    if (productData.categoryId !== undefined && productData.categoryId !== null && productData.categoryId !== '' && productData.categoryId !== 0) {
+      const categoryId = typeof productData.categoryId === 'string' ? parseInt(productData.categoryId) : productData.categoryId;
+      console.log('    Parsed categoryId:', categoryId, '(type:', typeof categoryId, ')');
+      if (categoryId && !isNaN(categoryId) && categoryId > 0) {
+        // Verify category exists
+        const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
+        if (category) {
+          productData.categoryId = categoryId;
+          console.log('  ✅ Updated categoryId:', categoryId, 'for category:', category.name);
+        } else {
+          console.log('  ⚠️ Warning: Category not found for categoryId:', categoryId);
+          throw new Error(`Category with ID ${categoryId} not found`);
+        }
+      } else {
+        console.log('  ⚠️ Warning: Invalid categoryId:', categoryId);
+        throw new Error(`Invalid categoryId: ${categoryId}`);
+      }
+    } else {
+      // If categoryId not provided, keep existing one (for edit operations)
+      if (existingCategoryId) {
+        productData.categoryId = existingCategoryId;
+        console.log('  ℹ️ No categoryId provided, keeping existing categoryId:', existingCategoryId);
+      } else {
+        console.log('  ⚠️ Warning: No categoryId provided and no existing categoryId found');
+        throw new Error('categoryId is required');
+      }
+    }
+
     // Handle subcategoryId
     console.log('  Processing subcategoryId...');
     if (productData.subcategoryId !== undefined && productData.subcategoryId !== null) {
@@ -242,59 +284,80 @@ export class AdminService {
     }
     
     console.log('  Final productData before database update:');
+    console.log('    categoryId:', productData.categoryId);
     console.log('    brandId:', productData.brandId);
     console.log('    brand:', productData.brand);
     console.log('    subcategoryId:', productData.subcategoryId);
     console.log('    skus:', productData.skus);
     console.log('    Full data:', JSON.stringify(productData, null, 2));
     
-    // Use save method instead of update for more reliable updates
-    const existingProduct = await this.productRepository.findOne({ 
-      where: { id },
-      relations: ['category', 'brandEntity', 'subcategory']
-    });
-    if (!existingProduct) {
-      throw new Error(`Product with ID ${id} not found`);
-    }
-    
     console.log('  Existing product before merge:', JSON.stringify(existingProduct, null, 2));
     
-    // Merge the existing product with the new data
-    const mergedProduct = { ...existingProduct, ...productData };
+    // Prepare update data - only include fields that should be updated
+    // Remove relation objects and internal fields (use _id alias to avoid shadowing the function param 'id')
+    const { category, subcategory, brandEntity, id: _bodyId, createdAt, updatedAt, ...updateData } = productData;
     
-    // Explicitly ensure SKUs are included if provided
-    if (productData.skus !== undefined) {
-      mergedProduct.skus = productData.skus;
-      console.log('  ✅ Explicitly set SKUs:', JSON.stringify(mergedProduct.skus, null, 2));
+    // Manually set key fields to ensure they're properly updated
+    const fieldsToUpdate: any = {
+      name: updateData.name ?? existingProduct.name,
+      description: updateData.description ?? existingProduct.description,
+      price: updateData.price ?? existingProduct.price,
+      originalPrice: updateData.originalPrice ?? existingProduct.originalPrice,
+      stock: updateData.stock ?? existingProduct.stock,
+      image: updateData.image ?? existingProduct.image,
+      images: updateData.images ?? existingProduct.images,
+      tags: updateData.tags ?? existingProduct.tags,
+      rating: updateData.rating ?? existingProduct.rating,
+      reviewCount: updateData.reviewCount ?? existingProduct.reviewCount,
+      isActive: updateData.isActive ?? existingProduct.isActive,
+      isFeatured: updateData.isFeatured ?? existingProduct.isFeatured,
+      isPopular: updateData.isPopular ?? existingProduct.isPopular,
+      requiresAgeVerification: updateData.requiresAgeVerification ?? existingProduct.requiresAgeVerification,
+      brand: updateData.brand ?? existingProduct.brand,
+      brandId: updateData.brandId ?? existingProduct.brandId,
+      alcoholContent: updateData.alcoholContent ?? existingProduct.alcoholContent,
+      volume: updateData.volume ?? existingProduct.volume,
+      origin: updateData.origin ?? existingProduct.origin,
+      subcategoryId: updateData.subcategoryId ?? existingProduct.subcategoryId,
+      categoryId: productData.categoryId ?? existingProduct.categoryId, // Use processed categoryId
+    };
+    
+    // Add SKUs if provided
+    if (updateData.skus !== undefined) {
+      fieldsToUpdate.skus = updateData.skus;
     }
     
-    console.log('  Merged product data:', JSON.stringify(mergedProduct, null, 2));
-    
-    // Ensure brandId is properly set
-    if (productData.brandId !== undefined) {
-      mergedProduct.brandId = productData.brandId;
-    }
-    if (productData.brand !== undefined) {
-      mergedProduct.brand = productData.brand;
-    }
-    
-    console.log('  Final merged product before save:', {
-      id: mergedProduct.id,
-      brand: mergedProduct.brand,
-      brandId: mergedProduct.brandId,
-      subcategoryId: mergedProduct.subcategoryId
+    console.log('  Fields to update:', {
+      productId: id, // confirm we're using the URL param id
+      categoryId: fieldsToUpdate.categoryId,
+      name: fieldsToUpdate.name,
+      price: fieldsToUpdate.price,
+      brandId: fieldsToUpdate.brandId,
+      subcategoryId: fieldsToUpdate.subcategoryId
     });
     
     try {
-      const savedProduct = await this.productRepository.save(mergedProduct);
-      console.log('  Database save result:', savedProduct);
-    } catch (saveError) {
-      console.error('  ❌ Database save error:', saveError);
-      throw saveError;
+      // Use update method which is safer for partial updates
+      // 'id' here is the function parameter from the URL (NOT from the request body)
+      await this.productRepository.update(id, fieldsToUpdate);
+      console.log('  ✅ Database update successful');
+    } catch (updateError: any) {
+      console.error('  ❌ Database update error:', updateError);
+      console.error('  Error details:', {
+        message: updateError?.message,
+        code: updateError?.code,
+        errno: updateError?.errno,
+        sqlMessage: updateError?.sqlMessage,
+        sql: updateError?.sql,
+        stack: updateError?.stack
+      });
+      throw new Error(`Failed to update product: ${updateError?.message || 'Unknown error'}`);
     }
     
     const updatedProduct = await this.getProductById(id);
     console.log('  Updated Product after database query:');
+    console.log('    categoryId:', updatedProduct?.categoryId);
+    console.log('    category:', updatedProduct?.category);
     console.log('    brandId:', updatedProduct?.brandId);
     console.log('    brand:', updatedProduct?.brand);
     console.log('    subcategoryId:', updatedProduct?.subcategoryId);
