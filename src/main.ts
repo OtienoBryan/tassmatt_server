@@ -6,8 +6,17 @@ async function bootstrap() {
   
   // Enable CORS for client-side requests
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:8080'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:8080',
+      'https://shop.tassmatt.co.ke',
+      'https://www.shop.tassmatt.co.ke',
+      'https://tassmatt.co.ke',
+      'https://www.tassmatt.co.ke',
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'user-id'],
     credentials: true,
   });
