@@ -23,6 +23,9 @@ const riders_module_1 = require("./riders/riders.module");
 const brands_module_1 = require("./brands/brands.module");
 const blogs_module_1 = require("./blogs/blogs.module");
 const gallery_module_1 = require("./gallery/gallery.module");
+const policies_module_1 = require("./policies/policies.module");
+const email_module_1 = require("./email/email.module");
+const auth_module_1 = require("./auth/auth.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -48,6 +51,9 @@ exports.AppModule = AppModule = __decorate([
             brands_module_1.BrandsModule,
             blogs_module_1.BlogsModule,
             gallery_module_1.GalleryModule,
+            policies_module_1.PoliciesModule,
+            email_module_1.EmailModule,
+            auth_module_1.AuthModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

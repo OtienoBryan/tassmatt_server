@@ -144,4 +144,10 @@ export declare class AdminController {
     createGallery(galleryData: any): Promise<import("../entities/gallery.entity").Gallery[]>;
     updateGallery(id: number, galleryData: any): Promise<import("../entities/gallery.entity").Gallery | null>;
     deleteGallery(id: number): Promise<import("typeorm").DeleteResult>;
+    getAllPolicies(): Promise<import("../entities/policy.entity").Policy[]>;
+    getPolicyById(id: number): Promise<import("../entities/policy.entity").Policy | null>;
+    getPolicyByType(type: string): Promise<import("../entities/policy.entity").Policy | null>;
+    createPolicy(policyData: any): Promise<import("../entities/policy.entity").Policy[]>;
+    updatePolicy(id: number, policyData: any): Promise<import("../entities/policy.entity").Policy | null>;
+    deletePolicy(id: number): Promise<import("typeorm").DeleteResult>;
 }

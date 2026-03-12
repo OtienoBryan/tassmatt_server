@@ -16,8 +16,8 @@ export class User {
   @Column()
   lastName: string;
 
-  @Column({ nullable: true })
-  phone: string;
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  phone?: string;
 
   @Column({ nullable: true })
   dateOfBirth: Date;

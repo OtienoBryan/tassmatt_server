@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Body, Headers, Put } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, Headers, Put, HttpException, HttpStatus } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import type { CreateOrderDto } from './orders.service';
 
@@ -8,21 +8,37 @@ export class OrdersController {
 
   @Post()
   async createOrder(@Body() createOrderDto: CreateOrderDto, @Headers('user-id') userId: string) {
-    console.log('OrdersController received data:', JSON.stringify(createOrderDto, null, 2));
-    console.log('User ID from header:', userId);
-    
-    // Get user ID from header
-    const userIdNum = parseInt(userId) || 1; // Default to 1 for testing
-    
-    // Add userId to the DTO
-    const orderData = {
-      ...createOrderDto,
-      userId: userIdNum,
-    };
+    try {
+      console.log('OrdersController received data:', JSON.stringify(createOrderDto, null, 2));
+      console.log('User ID from header:', userId);
+      
+      // If userId is provided in header and valid, use it; otherwise rely on customerEmail
+      const userIdNum = userId ? parseInt(userId) : undefined;
+      
+      // Add userId to the DTO if provided (optional, service will find/create user by email)
+      const orderData = {
+        ...createOrderDto,
+        userId: userIdNum,
+      };
 
-    console.log('Order data being sent to service:', JSON.stringify(orderData, null, 2));
+      console.log('Order data being sent to service:', JSON.stringify(orderData, null, 2));
 
-    return await this.ordersService.createOrder(orderData);
+      return await this.ordersService.createOrder(orderData);
+    } catch (error) {
+      console.error('Error in OrdersController.createOrder:', error);
+      console.error('Error stack:', error.stack);
+      console.error('Error message:', error.message);
+      
+      // Return proper HTTP error response
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: error.message || 'Internal server error',
+          error: 'Internal Server Error',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   @Get('my-orders')

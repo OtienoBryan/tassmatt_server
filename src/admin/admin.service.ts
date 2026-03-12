@@ -10,6 +10,7 @@ import { SubCategory } from '../entities/subcategory.entity';
 import { Blog } from '../entities/blog.entity';
 import { BlogCategory } from '../entities/blog-category.entity';
 import { Gallery } from '../entities/gallery.entity';
+import { Policy } from '../entities/policy.entity';
 
 @Injectable()
 export class AdminService {
@@ -32,6 +33,8 @@ export class AdminService {
     private blogCategoryRepository: Repository<BlogCategory>,
     @InjectRepository(Gallery)
     private galleryRepository: Repository<Gallery>,
+    @InjectRepository(Policy)
+    private policyRepository: Repository<Policy>,
   ) {}
 
   // Dashboard statistics
@@ -544,5 +547,42 @@ export class AdminService {
 
   async deleteGallery(id: number) {
     return this.galleryRepository.delete(id);
+  }
+
+  // Policies Management
+  async getAllPolicies() {
+    return this.policyRepository.find({
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getPolicyById(id: number) {
+    return this.policyRepository.findOne({
+      where: { id },
+    });
+  }
+
+  async getPolicyByType(type: string) {
+    return this.policyRepository.findOne({
+      where: { type: type as any },
+      order: { updatedAt: 'DESC' },
+    });
+  }
+
+  async createPolicy(policyData: any) {
+    const policy = this.policyRepository.create(policyData);
+    return this.policyRepository.save(policy);
+  }
+
+  async updatePolicy(id: number, policyData: any) {
+    const result = await this.policyRepository.update(id, policyData);
+    if (result.affected === 0) {
+      return null;
+    }
+    return this.getPolicyById(id);
+  }
+
+  async deletePolicy(id: number) {
+    return this.policyRepository.delete(id);
   }
 }

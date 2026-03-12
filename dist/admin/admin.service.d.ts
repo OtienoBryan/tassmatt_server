@@ -8,6 +8,7 @@ import { SubCategory } from '../entities/subcategory.entity';
 import { Blog } from '../entities/blog.entity';
 import { BlogCategory } from '../entities/blog-category.entity';
 import { Gallery } from '../entities/gallery.entity';
+import { Policy } from '../entities/policy.entity';
 export declare class AdminService {
     private productRepository;
     private categoryRepository;
@@ -18,7 +19,8 @@ export declare class AdminService {
     private blogRepository;
     private blogCategoryRepository;
     private galleryRepository;
-    constructor(productRepository: Repository<Product>, categoryRepository: Repository<Category>, orderRepository: Repository<Order>, userRepository: Repository<User>, brandRepository: Repository<Brand>, subCategoryRepository: Repository<SubCategory>, blogRepository: Repository<Blog>, blogCategoryRepository: Repository<BlogCategory>, galleryRepository: Repository<Gallery>);
+    private policyRepository;
+    constructor(productRepository: Repository<Product>, categoryRepository: Repository<Category>, orderRepository: Repository<Order>, userRepository: Repository<User>, brandRepository: Repository<Brand>, subCategoryRepository: Repository<SubCategory>, blogRepository: Repository<Blog>, blogCategoryRepository: Repository<BlogCategory>, galleryRepository: Repository<Gallery>, policyRepository: Repository<Policy>);
     getDashboardStats(): Promise<{
         totalProducts: number;
         totalCategories: number;
@@ -160,4 +162,10 @@ export declare class AdminService {
     createGallery(galleryData: any): Promise<Gallery[]>;
     updateGallery(id: number, galleryData: any): Promise<Gallery | null>;
     deleteGallery(id: number): Promise<import("typeorm").DeleteResult>;
+    getAllPolicies(): Promise<Policy[]>;
+    getPolicyById(id: number): Promise<Policy | null>;
+    getPolicyByType(type: string): Promise<Policy | null>;
+    createPolicy(policyData: any): Promise<Policy[]>;
+    updatePolicy(id: number, policyData: any): Promise<Policy | null>;
+    deletePolicy(id: number): Promise<import("typeorm").DeleteResult>;
 }

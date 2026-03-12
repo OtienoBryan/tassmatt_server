@@ -16,6 +16,7 @@ const order_item_entity_1 = require("../entities/order-item.entity");
 const product_entity_1 = require("../entities/product.entity");
 const user_entity_1 = require("../entities/user.entity");
 const rider_entity_1 = require("../entities/rider.entity");
+const email_module_1 = require("../email/email.module");
 let OrdersModule = class OrdersModule {
 };
 exports.OrdersModule = OrdersModule;
@@ -23,6 +24,7 @@ exports.OrdersModule = OrdersModule = __decorate([
     (0, common_1.Module)({
         imports: [
             typeorm_1.TypeOrmModule.forFeature([order_entity_1.Order, order_item_entity_1.OrderItem, product_entity_1.Product, user_entity_1.User, rider_entity_1.Rider]),
+            email_module_1.EmailModule,
         ],
         controllers: [orders_controller_1.OrdersController],
         providers: [orders_service_1.OrdersService],

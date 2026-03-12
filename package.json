@@ -24,7 +24,10 @@
     "db:test:improved": "node scripts/test-db-connection.js",
     "db:test:detailed": "node scripts/detailed-connection-test.js",
     "db:test:remote": "node scripts/test-remote-db.js",
-    "db:test:network": "node scripts/network-test.js"
+    "db:test:network": "node scripts/network-test.js",
+    "test:email": "node scripts/test-email.js",
+    "send:test-email": "node scripts/send-test-email.js",
+    "db:create-staff": "node scripts/create-staff-table.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -32,7 +35,9 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/typeorm": "^11.0.0",
+    "@types/bcrypt": "^6.0.0",
     "@types/multer": "^2.0.0",
+    "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "cloudinary": "^2.7.0",

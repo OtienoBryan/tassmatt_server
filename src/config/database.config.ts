@@ -4,6 +4,8 @@ import { Category, Product, User, Cart, CartItem, Order, OrderItem, Rider, SubCa
 import { BlogCategory } from '../entities/blog-category.entity';
 import { Blog } from '../entities/blog.entity';
 import { Gallery } from '../entities/gallery.entity';
+import { Policy } from '../entities/policy.entity';
+import { Staff } from '../entities/staff.entity';
 
 export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => ({
   type: 'mysql',
@@ -12,7 +14,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
   username: configService.get<string>('DB_USERNAME'),
   password: configService.get<string>('DB_PASSWORD'),
   database: configService.get<string>('DB_DATABASE'),
-  entities: [Category, Product, User, Cart, CartItem, Order, OrderItem, Rider, SubCategory, Brand, BlogCategory, Blog, Gallery],
+  entities: [Category, Product, User, Cart, CartItem, Order, OrderItem, Rider, SubCategory, Brand, BlogCategory, Blog, Gallery, Policy, Staff],
   synchronize: false, // Disabled to avoid schema conflicts
   logging: configService.get<string>('NODE_ENV') === 'development',
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],

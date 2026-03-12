@@ -21,15 +21,27 @@ let OrdersController = class OrdersController {
         this.ordersService = ordersService;
     }
     async createOrder(createOrderDto, userId) {
-        console.log('OrdersController received data:', JSON.stringify(createOrderDto, null, 2));
-        console.log('User ID from header:', userId);
-        const userIdNum = parseInt(userId) || 1;
-        const orderData = {
-            ...createOrderDto,
-            userId: userIdNum,
-        };
-        console.log('Order data being sent to service:', JSON.stringify(orderData, null, 2));
-        return await this.ordersService.createOrder(orderData);
+        try {
+            console.log('OrdersController received data:', JSON.stringify(createOrderDto, null, 2));
+            console.log('User ID from header:', userId);
+            const userIdNum = userId ? parseInt(userId) : undefined;
+            const orderData = {
+                ...createOrderDto,
+                userId: userIdNum,
+            };
+            console.log('Order data being sent to service:', JSON.stringify(orderData, null, 2));
+            return await this.ordersService.createOrder(orderData);
+        }
+        catch (error) {
+            console.error('Error in OrdersController.createOrder:', error);
+            console.error('Error stack:', error.stack);
+            console.error('Error message:', error.message);
+            throw new common_1.HttpException({
+                statusCode: common_1.HttpStatus.INTERNAL_SERVER_ERROR,
+                message: error.message || 'Internal server error',
+                error: 'Internal Server Error',
+            }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
     async getMyOrders(userId) {
         const userIdNum = parseInt(userId) || 1;

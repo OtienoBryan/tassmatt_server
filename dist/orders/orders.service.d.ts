@@ -4,8 +4,12 @@ import { OrderItem } from '../entities/order-item.entity';
 import { Product } from '../entities/product.entity';
 import { User } from '../entities/user.entity';
 import { Rider } from '../entities/rider.entity';
+import { EmailService } from '../email/email.service';
 export interface CreateOrderDto {
-    userId: number;
+    userId?: number;
+    customerEmail: string;
+    customerName: string;
+    customerPhone?: string;
     items: {
         productId: number;
         quantity: number;
@@ -54,7 +58,8 @@ export declare class OrdersService {
     private productRepository;
     private userRepository;
     private riderRepository;
-    constructor(orderRepository: Repository<Order>, orderItemRepository: Repository<OrderItem>, productRepository: Repository<Product>, userRepository: Repository<User>, riderRepository: Repository<Rider>);
+    private emailService;
+    constructor(orderRepository: Repository<Order>, orderItemRepository: Repository<OrderItem>, productRepository: Repository<Product>, userRepository: Repository<User>, riderRepository: Repository<Rider>, emailService: EmailService);
     createOrder(createOrderDto: CreateOrderDto): Promise<OrderResponse>;
     getOrdersByUserId(userId: number): Promise<OrderResponse[]>;
     getOrderById(id: number): Promise<OrderResponse | null>;

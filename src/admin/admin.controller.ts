@@ -216,4 +216,35 @@ export class AdminController {
   async deleteGallery(@Param('id', ParseIntPipe) id: number) {
     return this.adminService.deleteGallery(id);
   }
+
+  // Policies management
+  @Get('policies')
+  async getAllPolicies() {
+    return this.adminService.getAllPolicies();
+  }
+
+  @Get('policies/:id')
+  async getPolicyById(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.getPolicyById(id);
+  }
+
+  @Get('policies/type/:type')
+  async getPolicyByType(@Param('type') type: string) {
+    return this.adminService.getPolicyByType(type);
+  }
+
+  @Post('policies')
+  async createPolicy(@Body() policyData: any) {
+    return this.adminService.createPolicy(policyData);
+  }
+
+  @Put('policies/:id')
+  async updatePolicy(@Param('id', ParseIntPipe) id: number, @Body() policyData: any) {
+    return this.adminService.updatePolicy(id, policyData);
+  }
+
+  @Delete('policies/:id')
+  async deletePolicy(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.deletePolicy(id);
+  }
 }

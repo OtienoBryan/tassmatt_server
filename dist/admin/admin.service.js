@@ -25,6 +25,7 @@ const subcategory_entity_1 = require("../entities/subcategory.entity");
 const blog_entity_1 = require("../entities/blog.entity");
 const blog_category_entity_1 = require("../entities/blog-category.entity");
 const gallery_entity_1 = require("../entities/gallery.entity");
+const policy_entity_1 = require("../entities/policy.entity");
 let AdminService = class AdminService {
     productRepository;
     categoryRepository;
@@ -35,7 +36,8 @@ let AdminService = class AdminService {
     blogRepository;
     blogCategoryRepository;
     galleryRepository;
-    constructor(productRepository, categoryRepository, orderRepository, userRepository, brandRepository, subCategoryRepository, blogRepository, blogCategoryRepository, galleryRepository) {
+    policyRepository;
+    constructor(productRepository, categoryRepository, orderRepository, userRepository, brandRepository, subCategoryRepository, blogRepository, blogCategoryRepository, galleryRepository, policyRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.orderRepository = orderRepository;
@@ -45,6 +47,7 @@ let AdminService = class AdminService {
         this.blogRepository = blogRepository;
         this.blogCategoryRepository = blogCategoryRepository;
         this.galleryRepository = galleryRepository;
+        this.policyRepository = policyRepository;
     }
     async getDashboardStats() {
         const [totalProducts, totalCategories, totalOrders, totalUsers, recentOrders] = await Promise.all([
@@ -483,6 +486,36 @@ let AdminService = class AdminService {
     async deleteGallery(id) {
         return this.galleryRepository.delete(id);
     }
+    async getAllPolicies() {
+        return this.policyRepository.find({
+            order: { createdAt: 'DESC' },
+        });
+    }
+    async getPolicyById(id) {
+        return this.policyRepository.findOne({
+            where: { id },
+        });
+    }
+    async getPolicyByType(type) {
+        return this.policyRepository.findOne({
+            where: { type: type },
+            order: { updatedAt: 'DESC' },
+        });
+    }
+    async createPolicy(policyData) {
+        const policy = this.policyRepository.create(policyData);
+        return this.policyRepository.save(policy);
+    }
+    async updatePolicy(id, policyData) {
+        const result = await this.policyRepository.update(id, policyData);
+        if (result.affected === 0) {
+            return null;
+        }
+        return this.getPolicyById(id);
+    }
+    async deletePolicy(id) {
+        return this.policyRepository.delete(id);
+    }
 };
 exports.AdminService = AdminService;
 exports.AdminService = AdminService = __decorate([
@@ -496,7 +529,9 @@ exports.AdminService = AdminService = __decorate([
     __param(6, (0, typeorm_1.InjectRepository)(blog_entity_1.Blog)),
     __param(7, (0, typeorm_1.InjectRepository)(blog_category_entity_1.BlogCategory)),
     __param(8, (0, typeorm_1.InjectRepository)(gallery_entity_1.Gallery)),
+    __param(9, (0, typeorm_1.InjectRepository)(policy_entity_1.Policy)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

@@ -19,3 +19,9 @@ CLOUDINARY_UPLOAD_PRESET=drinks-admin-upload
 # JWT Configuration (if needed)
 JWT_SECRET=your-jwt-secret-key
 JWT_EXPIRES_IN=24h
+
+# Resend Email Configuration
+# Get your API key from https://resend.com/api-keys
+RESEND_API_KEY=re_your_resend_api_key_here
+# The email address that will appear as the sender (must be verified in Resend)
+RESEND_FROM_EMAIL=noreply@tassmatt.co.ke

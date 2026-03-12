@@ -14,6 +14,9 @@ import { RidersModule } from './riders/riders.module';
 import { BrandsModule } from './brands/brands.module';
 import { BlogsModule } from './blogs/blogs.module';
 import { GalleryModule } from './gallery/gallery.module';
+import { PoliciesModule } from './policies/policies.module';
+import { EmailModule } from './email/email.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -36,6 +39,9 @@ import { GalleryModule } from './gallery/gallery.module';
     BrandsModule,
     BlogsModule,
     GalleryModule,
+    PoliciesModule,
+    EmailModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

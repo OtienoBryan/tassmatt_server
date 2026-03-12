@@ -152,6 +152,24 @@ let AdminController = class AdminController {
     async deleteGallery(id) {
         return this.adminService.deleteGallery(id);
     }
+    async getAllPolicies() {
+        return this.adminService.getAllPolicies();
+    }
+    async getPolicyById(id) {
+        return this.adminService.getPolicyById(id);
+    }
+    async getPolicyByType(type) {
+        return this.adminService.getPolicyByType(type);
+    }
+    async createPolicy(policyData) {
+        return this.adminService.createPolicy(policyData);
+    }
+    async updatePolicy(id, policyData) {
+        return this.adminService.updatePolicy(id, policyData);
+    }
+    async deletePolicy(id) {
+        return this.adminService.deletePolicy(id);
+    }
 };
 exports.AdminController = AdminController;
 __decorate([
@@ -398,6 +416,48 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "deleteGallery", null);
+__decorate([
+    (0, common_1.Get)('policies'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getAllPolicies", null);
+__decorate([
+    (0, common_1.Get)('policies/:id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getPolicyById", null);
+__decorate([
+    (0, common_1.Get)('policies/type/:type'),
+    __param(0, (0, common_1.Param)('type')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getPolicyByType", null);
+__decorate([
+    (0, common_1.Post)('policies'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "createPolicy", null);
+__decorate([
+    (0, common_1.Put)('policies/:id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updatePolicy", null);
+__decorate([
+    (0, common_1.Delete)('policies/:id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "deletePolicy", null);
 exports.AdminController = AdminController = __decorate([
     (0, common_1.Controller)('api/admin'),
     __metadata("design:paramtypes", [admin_service_1.AdminService])
