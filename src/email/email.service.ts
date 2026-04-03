@@ -6,6 +6,10 @@ import { Resend } from 'resend';
 export class EmailService {
   private resend: Resend;
   private fromEmail: string;
+  /** Staff inbox: receives a dedicated “new order” alert (not the customer confirmation). */
+  private staffOrderNotifyEmail: string;
+  /** CC on staff new-order emails (e.g. personal inbox). */
+  private staffOrderNotifyCcEmail: string;
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('RESEND_API_KEY');
@@ -19,7 +23,20 @@ export class EmailService {
     }
     
     this.fromEmail = this.configService.get<string>('RESEND_FROM_EMAIL') || 'noreply@tassmatt.co.ke';
+    this.staffOrderNotifyEmail =
+      this.configService.get<string>('ORDER_NOTIFY_EMAIL')?.trim() ||
+      this.configService.get<string>('ORDER_CC_EMAIL')?.trim() ||
+      'tassmattagenciesltd@gmail.com';
+    this.staffOrderNotifyCcEmail =
+      this.configService.get<string>('ORDER_NOTIFY_CC_EMAIL')?.trim() || 'bo9511221@gmail.com';
     console.log(`📧 Email service configured with from address: ${this.fromEmail}`);
+    console.log(`📧 New-order staff notifications: ${this.staffOrderNotifyEmail}`);
+    if (
+      this.staffOrderNotifyCcEmail &&
+      this.staffOrderNotifyCcEmail.toLowerCase() !== this.staffOrderNotifyEmail.toLowerCase()
+    ) {
+      console.log(`📧 New-order staff notification CC: ${this.staffOrderNotifyCcEmail}`);
+    }
   }
 
   async sendOrderConfirmation(orderData: {
@@ -65,7 +82,7 @@ export class EmailService {
       console.log(`   From: ${this.fromEmail}`);
       console.log(`   To: ${orderData.customerEmail}`);
       console.log(`   Subject: Order Confirmation - ${orderData.orderNumber}`);
-      
+
       const result = await this.resend.emails.send({
         from: this.fromEmail,
         to: orderData.customerEmail,
@@ -111,6 +128,168 @@ export class EmailService {
     }
   }
 
+  /**
+   * Internal alert for staff: a client placed a new order (separate from customer confirmation).
+   */
+  async sendNewOrderStaffNotification(orderData: {
+    orderNumber: string;
+    customerName: string;
+    customerEmail: string;
+    customerPhone?: string;
+    items: Array<{
+      productName: string;
+      quantity: number;
+      price: number;
+      total: number;
+    }>;
+    subtotal: number;
+    tax: number;
+    shipping: number;
+    total: number;
+    shippingAddress: string;
+    paymentMethod: string;
+    paymentStatus: string;
+  }): Promise<void> {
+    if (!this.resend) {
+      console.warn('⚠️ Resend not initialized. Skipping staff new-order notification.');
+      return;
+    }
+
+    if (!this.staffOrderNotifyEmail) {
+      console.warn('⚠️ Staff notify email not configured. Skipping new-order notification.');
+      return;
+    }
+
+    try {
+      const html = this.generateStaffNewOrderEmail(orderData);
+      const subject = `New order — ${orderData.orderNumber} (${orderData.customerName})`;
+
+      const ccSameAsTo =
+        this.staffOrderNotifyCcEmail &&
+        this.staffOrderNotifyCcEmail.toLowerCase() ===
+          this.staffOrderNotifyEmail.toLowerCase();
+
+      console.log('📧 Sending staff new-order notification...');
+      console.log(`   To: ${this.staffOrderNotifyEmail}`);
+      if (this.staffOrderNotifyCcEmail && !ccSameAsTo) {
+        console.log(`   CC: ${this.staffOrderNotifyCcEmail}`);
+      }
+      console.log(`   Subject: ${subject}`);
+
+      await this.resend.emails.send({
+        from: this.fromEmail,
+        to: this.staffOrderNotifyEmail,
+        ...(this.staffOrderNotifyCcEmail && !ccSameAsTo
+          ? { cc: [this.staffOrderNotifyCcEmail] }
+          : {}),
+        subject,
+        html,
+      });
+
+      console.log('✅ Staff new-order notification sent.');
+    } catch (error: any) {
+      console.error('❌ Failed to send staff new-order notification:', error?.message || error);
+    }
+  }
+
+  private escapeHtml(s: string): string {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  private generateStaffNewOrderEmail(orderData: {
+    orderNumber: string;
+    customerName: string;
+    customerEmail: string;
+    customerPhone?: string;
+    items: Array<{
+      productName: string;
+      quantity: number;
+      price: number;
+      total: number;
+    }>;
+    subtotal: number;
+    tax: number;
+    shipping: number;
+    total: number;
+    shippingAddress: string;
+    paymentMethod: string;
+    paymentStatus: string;
+  }): string {
+    const subtotal = this.toMoney(orderData.subtotal);
+    const tax = this.toMoney(orderData.tax);
+    const shipping = this.toMoney(orderData.shipping);
+    const total = this.toMoney(orderData.total);
+
+    const paymentMethodDisplay =
+      orderData.paymentMethod === 'paystack' ? 'Paystack (online)' : 'Cash on delivery';
+    const paymentStatusDisplay = orderData.paymentStatus === 'paid' ? 'Paid' : 'Pending';
+
+    const rows = orderData.items
+      .map((item) => {
+        const line = this.toMoney(item.total);
+        return `<tr>
+          <td style="padding:8px;border-bottom:1px solid #eee;">${this.escapeHtml(item.productName)}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${item.quantity}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">KES ${line.toFixed(2)}</td>
+        </tr>`;
+      })
+      .join('');
+
+    return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden;">
+        <tr>
+          <td style="background:#8B1538;padding:24px;text-align:center;">
+            <h1 style="color:#fff;margin:0;font-size:22px;">New order received</h1>
+            <p style="color:#f0e0e4;margin:8px 0 0;font-size:14px;">A client submitted an order on the shop.</p>
+          </td>
+        </tr>
+        <tr><td style="padding:28px;">
+          <p style="color:#333;font-size:16px;margin:0 0 16px;"><strong>Order</strong> ${this.escapeHtml(orderData.orderNumber)}</p>
+          <table width="100%" style="margin-bottom:20px;font-size:14px;color:#444;">
+            <tr><td style="padding:4px 0;"><strong>Customer</strong></td><td>${this.escapeHtml(orderData.customerName)}</td></tr>
+            <tr><td style="padding:4px 0;"><strong>Email</strong></td><td><a href="mailto:${encodeURIComponent(orderData.customerEmail)}">${this.escapeHtml(orderData.customerEmail)}</a></td></tr>
+            ${orderData.customerPhone ? `<tr><td style="padding:4px 0;"><strong>Phone</strong></td><td>${this.escapeHtml(orderData.customerPhone)}</td></tr>` : ''}
+            <tr><td style="padding:4px 0;"><strong>Total</strong></td><td style="font-weight:bold;color:#8B1538;">KES ${total.toFixed(2)}</td></tr>
+            <tr><td style="padding:4px 0;"><strong>Payment</strong></td><td>${paymentMethodDisplay} — ${paymentStatusDisplay}</td></tr>
+          </table>
+          <h3 style="color:#1a1a1a;font-size:15px;margin:0 0 8px;">Items</h3>
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+            <thead>
+              <tr style="background:#f8f9fa;">
+                <th style="padding:8px;text-align:left;">Product</th>
+                <th style="padding:8px;text-align:center;">Qty</th>
+                <th style="padding:8px;text-align:right;">Line total</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <p style="color:#666;font-size:13px;margin:16px 0 0;">Subtotal KES ${subtotal.toFixed(2)} · Tax KES ${tax.toFixed(2)} · Shipping KES ${shipping.toFixed(2)}</p>
+          <div style="background:#f8f9fa;padding:14px;border-radius:6px;margin-top:16px;">
+            <strong style="color:#333;">Shipping address</strong>
+            <p style="color:#555;margin:8px 0 0;white-space:pre-wrap;">${this.escapeHtml(orderData.shippingAddress || '—')}</p>
+          </div>
+          <p style="color:#999;font-size:12px;margin:24px 0 0;">Open the admin panel to manage this order.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+  }
+
+  /** Coerce DB/API decimals (often strings) to a number for formatting. */
+  private toMoney(value: unknown): number {
+    const n = typeof value === 'number' ? value : parseFloat(String(value ?? 0));
+    return Number.isFinite(n) ? n : 0;
+  }
+
   private generateOrderConfirmationEmail(orderData: {
     orderNumber: string;
     customerName: string;
@@ -128,16 +307,25 @@ export class EmailService {
     paymentMethod: string;
     paymentStatus: string;
   }): string {
+    const subtotal = this.toMoney(orderData.subtotal);
+    const tax = this.toMoney(orderData.tax);
+    const shipping = this.toMoney(orderData.shipping);
+    const total = this.toMoney(orderData.total);
+
     const itemsHtml = orderData.items
       .map(
-        (item) => `
+        (item) => {
+          const price = this.toMoney(item.price);
+          const lineTotal = this.toMoney(item.total);
+          return `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #eee;">${item.productName}</td>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">KES ${item.price.toFixed(2)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">KES ${item.total.toFixed(2)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">KES ${price.toFixed(2)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">KES ${lineTotal.toFixed(2)}</td>
       </tr>
-    `
+    `;
+        }
       )
       .join('');
 
@@ -205,19 +393,19 @@ export class EmailService {
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px;">
                 <tr>
                   <td style="padding: 8px 0; color: #666666;">Subtotal:</td>
-                  <td style="padding: 8px 0; text-align: right; color: #1a1a1a; font-weight: bold;">KES ${orderData.subtotal.toFixed(2)}</td>
+                  <td style="padding: 8px 0; text-align: right; color: #1a1a1a; font-weight: bold;">KES ${subtotal.toFixed(2)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #666666;">Tax:</td>
-                  <td style="padding: 8px 0; text-align: right; color: #1a1a1a; font-weight: bold;">KES ${orderData.tax.toFixed(2)}</td>
+                  <td style="padding: 8px 0; text-align: right; color: #1a1a1a; font-weight: bold;">KES ${tax.toFixed(2)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #666666;">Shipping:</td>
-                  <td style="padding: 8px 0; text-align: right; color: #1a1a1a; font-weight: bold;">KES ${orderData.shipping.toFixed(2)}</td>
+                  <td style="padding: 8px 0; text-align: right; color: #1a1a1a; font-weight: bold;">KES ${shipping.toFixed(2)}</td>
                 </tr>
                 <tr style="border-top: 2px solid #ddd;">
                   <td style="padding: 12px 0; color: #1a1a1a; font-size: 18px; font-weight: bold;">Total:</td>
-                  <td style="padding: 12px 0; text-align: right; color: #1a1a1a; font-size: 18px; font-weight: bold;">KES ${orderData.total.toFixed(2)}</td>
+                  <td style="padding: 12px 0; text-align: right; color: #1a1a1a; font-size: 18px; font-weight: bold;">KES ${total.toFixed(2)}</td>
                 </tr>
               </table>
               

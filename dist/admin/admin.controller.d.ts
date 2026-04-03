@@ -43,6 +43,7 @@ export declare class AdminController {
         requiresAgeVerification: boolean;
         category: any;
         categoryId: number;
+        categories: import("../entities").Category[];
         subcategory: any;
         subcategoryId: number;
         cartItems: import("../entities").CartItem[];
@@ -74,6 +75,7 @@ export declare class AdminController {
         requiresAgeVerification: boolean;
         category: any;
         categoryId: number;
+        categories: import("../entities").Category[];
         subcategory: any;
         subcategoryId: number;
         cartItems: import("../entities").CartItem[];
@@ -106,6 +108,7 @@ export declare class AdminController {
         requiresAgeVerification: boolean;
         category: any;
         categoryId: number;
+        categories: import("../entities").Category[];
         subcategory: any;
         subcategoryId: number;
         cartItems: import("../entities").CartItem[];

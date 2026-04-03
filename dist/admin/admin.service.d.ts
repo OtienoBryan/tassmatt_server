@@ -62,6 +62,7 @@ export declare class AdminService {
         requiresAgeVerification: boolean;
         category: any;
         categoryId: number;
+        categories: Category[];
         subcategory: any;
         subcategoryId: number;
         cartItems: import("../entities").CartItem[];
@@ -93,6 +94,7 @@ export declare class AdminService {
         requiresAgeVerification: boolean;
         category: any;
         categoryId: number;
+        categories: Category[];
         subcategory: any;
         subcategoryId: number;
         cartItems: import("../entities").CartItem[];
@@ -125,6 +127,7 @@ export declare class AdminService {
         requiresAgeVerification: boolean;
         category: any;
         categoryId: number;
+        categories: Category[];
         subcategory: any;
         subcategoryId: number;
         cartItems: import("../entities").CartItem[];

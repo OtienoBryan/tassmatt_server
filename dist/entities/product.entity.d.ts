@@ -1,5 +1,6 @@
 import { CartItem } from './cart-item.entity';
 import { OrderItem } from './order-item.entity';
+import { Category } from './category.entity';
 export declare class Product {
     id: number;
     name: string;
@@ -22,6 +23,7 @@ export declare class Product {
     requiresAgeVerification: boolean;
     category: any;
     categoryId: number;
+    categories: Category[];
     subcategory: any;
     subcategoryId: number;
     brandEntity: any;

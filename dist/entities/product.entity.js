@@ -13,6 +13,7 @@ exports.Product = void 0;
 const typeorm_1 = require("typeorm");
 const cart_item_entity_1 = require("./cart-item.entity");
 const order_item_entity_1 = require("./order-item.entity");
+const category_entity_1 = require("./category.entity");
 let Product = class Product {
     id;
     name;
@@ -35,6 +36,7 @@ let Product = class Product {
     requiresAgeVerification;
     category;
     categoryId;
+    categories;
     subcategory;
     subcategoryId;
     brandEntity;
@@ -130,6 +132,15 @@ __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
 ], Product.prototype, "categoryId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToMany)(() => category_entity_1.Category),
+    (0, typeorm_1.JoinTable)({
+        name: 'product_categories',
+        joinColumn: { name: 'productId', referencedColumnName: 'id' },
+        inverseJoinColumn: { name: 'categoryId', referencedColumnName: 'id' },
+    }),
+    __metadata("design:type", Array)
+], Product.prototype, "categories", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)('SubCategory', 'products', { nullable: true }),
     (0, typeorm_1.JoinColumn)({ name: 'subcategoryId' }),

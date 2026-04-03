@@ -215,7 +215,16 @@ let OrdersService = class OrdersService {
                     console.log('');
                     console.log('📧 Calling emailService.sendOrderConfirmation...');
                     await this.emailService.sendOrderConfirmation(emailData);
-                    console.log('✅ Email service call completed');
+                    console.log('✅ Customer order confirmation email completed');
+                    const staffNotifyData = {
+                        ...emailData,
+                        customerPhone: normalizedDto.customerPhone ||
+                            createOrderDto.customerPhone ||
+                            undefined,
+                    };
+                    console.log('📧 Calling emailService.sendNewOrderStaffNotification...');
+                    await this.emailService.sendNewOrderStaffNotification(staffNotifyData);
+                    console.log('✅ Staff new-order notification completed');
                 }
                 catch (emailError) {
                     console.error('');

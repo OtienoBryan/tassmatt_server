@@ -39,11 +39,14 @@ let ProductsService = class ProductsService {
         });
     }
     async findByCategory(categoryId) {
-        return this.productRepository.find({
-            where: { categoryId, isActive: true },
-            relations: ['category'],
-            order: { createdAt: 'DESC' },
-        });
+        return this.productRepository
+            .createQueryBuilder('product')
+            .leftJoinAndSelect('product.category', 'category')
+            .leftJoin('product.categories', 'mappedCategory')
+            .where('product.isActive = :isActive', { isActive: true })
+            .andWhere('(mappedCategory.id = :categoryId OR product.categoryId = :categoryId)', { categoryId })
+            .orderBy('product.createdAt', 'DESC')
+            .getMany();
     }
     async findFeatured() {
         return this.productRepository.find({

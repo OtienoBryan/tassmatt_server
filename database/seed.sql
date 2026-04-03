@@ -55,6 +55,12 @@ INSERT INTO products (name, description, price, originalPrice, stock, image, bra
 ('Grand Marnier', 'Orange cognac liqueur with citrus notes', 39.99, 44.99, 18, '/images/products/grand-marnier.jpg', 'Grand Marnier', '40%', '700ml', 'France', '["liqueur", "orange", "cognac"]', 4.6, 67, TRUE, FALSE, TRUE, 8),
 ('Amaretto', 'Sweet almond liqueur with marzipan notes', 19.99, 23.99, 30, '/images/products/amaretto.jpg', 'Almond Delight', '28%', '700ml', 'Italy', '["liqueur", "almond", "sweet"]', 4.3, 42, TRUE, FALSE, TRUE, 8);
 
+-- Backfill product-categories join table
+-- Uses existing `products.categoryId` as the initial (primary) category assignment.
+INSERT IGNORE INTO product_categories (productId, categoryId)
+SELECT id, categoryId
+FROM products;
+
 -- Insert sample users
 INSERT INTO users (email, firstName, lastName, phone, dateOfBirth, isActive, isEmailVerified) VALUES
 ('john.doe@example.com', 'John', 'Doe', '+1234567890', '1990-05-15', TRUE, TRUE),

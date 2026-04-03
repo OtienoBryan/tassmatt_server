@@ -29,11 +29,17 @@ export class ProductsService {
   }
 
   async findByCategory(categoryId: number): Promise<Product[]> {
-    return this.productRepository.find({
-      where: { categoryId, isActive: true },
-      relations: ['category'],
-      order: { createdAt: 'DESC' },
-    });
+    // Multi-category support:
+    // - Prefer products that have the requested category in the join table (`product.categories`)
+    // - Keep backward compatibility with the legacy `products.categoryId` column.
+    return this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoin('product.categories', 'mappedCategory')
+      .where('product.isActive = :isActive', { isActive: true })
+      .andWhere('(mappedCategory.id = :categoryId OR product.categoryId = :categoryId)', { categoryId })
+      .orderBy('product.createdAt', 'DESC')
+      .getMany();
   }
 
   async findFeatured(): Promise<Product[]> {

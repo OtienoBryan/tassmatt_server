@@ -86,9 +86,8 @@ let AdminService = class AdminService {
     }
     async getAllProducts() {
         const products = await this.productRepository.find({
-            relations: ['category', 'brandEntity', 'subcategory'],
+            relations: ['category', 'categories', 'brandEntity', 'subcategory'],
             order: { createdAt: 'DESC' },
-            select: ['id', 'name', 'description', 'price', 'originalPrice', 'stock', 'image', 'images', 'brand', 'brandId', 'alcoholContent', 'volume', 'origin', 'tags', 'rating', 'reviewCount', 'isActive', 'isFeatured', 'isPopular', 'requiresAgeVerification', 'categoryId', 'subcategoryId', 'createdAt', 'updatedAt']
         });
         return products.map(product => ({
             ...product,
@@ -100,8 +99,7 @@ let AdminService = class AdminService {
     async getProductById(id) {
         const product = await this.productRepository.findOne({
             where: { id },
-            relations: ['category', 'brandEntity', 'subcategory'],
-            select: ['id', 'name', 'description', 'price', 'originalPrice', 'stock', 'image', 'images', 'brand', 'brandId', 'alcoholContent', 'volume', 'origin', 'tags', 'rating', 'reviewCount', 'isActive', 'isFeatured', 'isPopular', 'requiresAgeVerification', 'categoryId', 'subcategoryId', 'createdAt', 'updatedAt']
+            relations: ['category', 'categories', 'brandEntity', 'subcategory'],
         });
         if (!product)
             return null;
@@ -155,6 +153,28 @@ let AdminService = class AdminService {
         else {
             productData.subcategoryId = null;
         }
+        const normalizeCategoryIds = (value) => {
+            const arr = Array.isArray(value) ? value : (value !== undefined && value !== null && value !== '' ? [value] : []);
+            return arr
+                .map(v => (typeof v === 'string' ? parseInt(v) : v))
+                .filter((n) => typeof n === 'number' && !isNaN(n) && n > 0);
+        };
+        const requestedCategoryIds = normalizeCategoryIds(productData.categoryIds);
+        const legacyCategoryIds = normalizeCategoryIds(productData.categoryId);
+        const categoryIds = requestedCategoryIds.length > 0 ? requestedCategoryIds : legacyCategoryIds;
+        if (categoryIds.length === 0) {
+            throw new Error('categoryIds is required');
+        }
+        const uniqueCategoryIds = Array.from(new Set(categoryIds));
+        const categories = await this.categoryRepository.find({
+            where: { id: (0, typeorm_2.In)(uniqueCategoryIds) },
+        });
+        if (!categories || categories.length !== uniqueCategoryIds.length) {
+            throw new Error('One or more categories were not found');
+        }
+        productData.categoryId = uniqueCategoryIds[0];
+        productData.categories = categories;
+        delete productData.categoryIds;
         const product = this.productRepository.create(productData);
         return this.productRepository.save(product);
     }
@@ -168,7 +188,7 @@ let AdminService = class AdminService {
         console.log('  Brand ID type:', typeof productData.brandId);
         const currentProduct = await this.productRepository.findOne({
             where: { id },
-            relations: ['subcategory', 'brandEntity', 'category']
+            relations: ['subcategory', 'categories', 'brandEntity', 'category']
         });
         console.log('  Current Product before update:');
         console.log('    Current subcategoryId:', currentProduct?.subcategoryId);
@@ -212,44 +232,43 @@ let AdminService = class AdminService {
         }
         const existingProduct = await this.productRepository.findOne({
             where: { id },
-            relations: ['category', 'brandEntity', 'subcategory']
+            relations: ['category', 'categories', 'brandEntity', 'subcategory']
         });
         if (!existingProduct) {
             throw new Error(`Product with ID ${id} not found`);
         }
-        const existingCategoryId = existingProduct.categoryId;
-        console.log('  Processing categoryId...');
-        console.log('    categoryId in request:', productData.categoryId, '(type:', typeof productData.categoryId, ')');
-        console.log('    Existing categoryId:', existingCategoryId);
-        if (productData.categoryId !== undefined && productData.categoryId !== null && productData.categoryId !== '' && productData.categoryId !== 0) {
-            const categoryId = typeof productData.categoryId === 'string' ? parseInt(productData.categoryId) : productData.categoryId;
-            console.log('    Parsed categoryId:', categoryId, '(type:', typeof categoryId, ')');
-            if (categoryId && !isNaN(categoryId) && categoryId > 0) {
-                const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
-                if (category) {
-                    productData.categoryId = categoryId;
-                    console.log('  ✅ Updated categoryId:', categoryId, 'for category:', category.name);
-                }
-                else {
-                    console.log('  ⚠️ Warning: Category not found for categoryId:', categoryId);
-                    throw new Error(`Category with ID ${categoryId} not found`);
-                }
-            }
-            else {
-                console.log('  ⚠️ Warning: Invalid categoryId:', categoryId);
-                throw new Error(`Invalid categoryId: ${categoryId}`);
-            }
+        const normalizeCategoryIds = (value) => {
+            const arr = Array.isArray(value) ? value : (value !== undefined && value !== null && value !== '' ? [value] : []);
+            return arr
+                .map(v => (typeof v === 'string' ? parseInt(v) : v))
+                .filter((n) => typeof n === 'number' && !isNaN(n) && n > 0);
+        };
+        const existingCategoryIds = (existingProduct.categories || []).map(c => c.id);
+        console.log('  Processing categoryIds (multi-category)...');
+        console.log('    categoryIds in request:', productData.categoryIds, '(type:', typeof productData.categoryIds, ')');
+        console.log('    legacy categoryId in request:', productData.categoryId, '(type:', typeof productData.categoryId, ')');
+        console.log('    Existing categoryIds:', existingCategoryIds);
+        const requestedCategoryIds = normalizeCategoryIds(productData.categoryIds);
+        const legacyCategoryIds = normalizeCategoryIds(productData.categoryId);
+        const categoryIds = requestedCategoryIds.length > 0
+            ? requestedCategoryIds
+            : legacyCategoryIds.length > 0
+                ? legacyCategoryIds
+                : existingCategoryIds;
+        if (!categoryIds || categoryIds.length === 0) {
+            throw new Error('categoryIds is required');
         }
-        else {
-            if (existingCategoryId) {
-                productData.categoryId = existingCategoryId;
-                console.log('  ℹ️ No categoryId provided, keeping existing categoryId:', existingCategoryId);
-            }
-            else {
-                console.log('  ⚠️ Warning: No categoryId provided and no existing categoryId found');
-                throw new Error('categoryId is required');
-            }
+        const uniqueCategoryIds = Array.from(new Set(categoryIds));
+        const categoriesToSet = await this.categoryRepository.find({
+            where: { id: (0, typeorm_2.In)(uniqueCategoryIds) },
+        });
+        if (!categoriesToSet || categoriesToSet.length !== uniqueCategoryIds.length) {
+            throw new Error('One or more categories were not found');
         }
+        const primaryCategoryId = uniqueCategoryIds[0];
+        productData.categoryId = primaryCategoryId;
+        existingProduct.categoryId = primaryCategoryId;
+        existingProduct.category = categoriesToSet[0];
         console.log('  Processing subcategoryId...');
         if (productData.subcategoryId !== undefined && productData.subcategoryId !== null) {
             const subcategoryId = parseInt(productData.subcategoryId);
@@ -317,8 +336,12 @@ let AdminService = class AdminService {
             subcategoryId: fieldsToUpdate.subcategoryId
         });
         try {
-            await this.productRepository.update(id, fieldsToUpdate);
-            console.log('  ✅ Database update successful');
+            Object.assign(existingProduct, fieldsToUpdate);
+            existingProduct.categories = categoriesToSet;
+            existingProduct.categoryId = primaryCategoryId;
+            existingProduct.category = categoriesToSet[0];
+            await this.productRepository.save(existingProduct);
+            console.log('  ✅ Database update successful (including category join table)');
         }
         catch (updateError) {
             console.error('  ❌ Database update error:', updateError);

@@ -1,6 +1,18 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  ManyToMany,
+  OneToMany,
+  JoinColumn,
+  JoinTable,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { CartItem } from './cart-item.entity';
 import { OrderItem } from './order-item.entity';
+import { Category } from './category.entity';
 
 @Entity('products')
 export class Product {
@@ -67,6 +79,17 @@ export class Product {
 
   @Column()
   categoryId: number;
+
+  // Multi-category support via join table.
+  // `categoryId` remains the primary category for backward compatibility,
+  // while `categories` allows assigning additional categories.
+  @ManyToMany(() => Category)
+  @JoinTable({
+    name: 'product_categories',
+    joinColumn: { name: 'productId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'categoryId', referencedColumnName: 'id' },
+  })
+  categories: Category[];
 
   @ManyToOne('SubCategory', 'products', { nullable: true })
   @JoinColumn({ name: 'subcategoryId' })

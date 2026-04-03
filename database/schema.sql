@@ -38,6 +38,16 @@ CREATE TABLE IF NOT EXISTS products (
     FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE CASCADE
 );
 
+-- Create product-categories join table (multi-category support)
+-- Note: we keep `products.categoryId` as the "primary" category for backward compatibility.
+CREATE TABLE IF NOT EXISTS product_categories (
+    productId INT NOT NULL,
+    categoryId INT NOT NULL,
+    PRIMARY KEY (productId, categoryId),
+    FOREIGN KEY (productId) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE CASCADE
+);
+
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -130,6 +140,7 @@ CREATE TABLE IF NOT EXISTS riders (
 CREATE INDEX idx_products_category ON products(categoryId);
 CREATE INDEX idx_products_active ON products(isActive);
 CREATE INDEX idx_products_featured ON products(isFeatured);
+CREATE INDEX idx_product_categories_category ON product_categories(categoryId);
 CREATE INDEX idx_cart_items_cart ON cart_items(cartId);
 CREATE INDEX idx_cart_items_product ON cart_items(productId);
 CREATE INDEX idx_orders_user ON orders(userId);
