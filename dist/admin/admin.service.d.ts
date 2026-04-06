@@ -20,6 +20,8 @@ export declare class AdminService {
     private blogCategoryRepository;
     private galleryRepository;
     private policyRepository;
+    private readonly logger;
+    private readonly productRelationFallbacks;
     constructor(productRepository: Repository<Product>, categoryRepository: Repository<Category>, orderRepository: Repository<Order>, userRepository: Repository<User>, brandRepository: Repository<Brand>, subCategoryRepository: Repository<SubCategory>, blogRepository: Repository<Blog>, blogCategoryRepository: Repository<BlogCategory>, galleryRepository: Repository<Gallery>, policyRepository: Repository<Policy>);
     getDashboardStats(): Promise<{
         totalProducts: number;
@@ -38,8 +40,9 @@ export declare class AdminService {
         }[];
         topProducts: Product[];
     }>;
+    private mapAdminProductResponse;
     getAllProducts(): Promise<{
-        brandId: number | null;
+        brandId: number;
         brand: any;
         brandEntity: undefined;
         id: number;
@@ -71,7 +74,7 @@ export declare class AdminService {
         updatedAt: Date;
     }[]>;
     getProductById(id: number): Promise<{
-        brandId: number | null;
+        brandId: number;
         brand: any;
         brandEntity: undefined;
         id: number;
@@ -104,7 +107,7 @@ export declare class AdminService {
     } | null>;
     createProduct(productData: any): Promise<Product[]>;
     updateProduct(id: number, productData: any): Promise<{
-        brandId: number | null;
+        brandId: number;
         brand: any;
         brandEntity: undefined;
         id: number;

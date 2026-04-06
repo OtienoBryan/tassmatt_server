@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Product } from '../entities/product.entity';
@@ -14,6 +14,17 @@ import { Policy } from '../entities/policy.entity';
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
+  /** Try full admin relations first; fall back if join tables / FK columns are missing on the DB. */
+  private readonly productRelationFallbacks: string[][] = [
+    ['category', 'categories', 'brandEntity', 'subcategory'],
+    ['category', 'brandEntity', 'subcategory'],
+    ['category', 'brandEntity'],
+    ['category', 'categories'],
+    ['category'],
+  ];
+
   constructor(
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
@@ -77,36 +88,64 @@ export class AdminService {
   }
 
   // Products management
-  async getAllProducts() {
-    const products = await this.productRepository.find({
-      relations: ['category', 'categories', 'brandEntity', 'subcategory'],
-      order: { createdAt: 'DESC' },
-    });
-
-    // Ensure brand data is properly mapped
-    return products.map(product => ({
+  private mapAdminProductResponse(product: Product) {
+    return {
       ...product,
-      brandId: product.brandId || null,
+      brandId: product.brandId ?? null,
       brand: product.brand || (product.brandEntity ? product.brandEntity.name : ''),
-      brandEntity: undefined // Remove the entity from response
-    }));
+      brandEntity: undefined,
+    };
+  }
+
+  async getAllProducts() {
+    let lastError: unknown;
+    for (const relations of this.productRelationFallbacks) {
+      try {
+        const products = await this.productRepository.find({
+          relations,
+          order: { createdAt: 'DESC' },
+        });
+        if (relations.length < this.productRelationFallbacks[0].length) {
+          this.logger.warn(
+            `getAllProducts: loaded with reduced relations [${relations.join(', ')}]. Align DB with entities (see database/schema.sql, product_categories, brands, subcategories).`,
+          );
+        }
+        return products.map((p) => this.mapAdminProductResponse(p));
+      } catch (err) {
+        lastError = err;
+        this.logger.warn(
+          `getAllProducts failed with relations [${relations.join(', ')}]: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    this.logger.error('getAllProducts: all relation strategies failed', lastError);
+    throw lastError;
   }
 
   async getProductById(id: number) {
-    const product = await this.productRepository.findOne({
-      where: { id },
-      relations: ['category', 'categories', 'brandEntity', 'subcategory'],
-    });
-
-    if (!product) return null;
-
-    // Ensure brand data is properly mapped
-    return {
-      ...product,
-      brandId: product.brandId || null,
-      brand: product.brand || (product.brandEntity ? product.brandEntity.name : ''),
-      brandEntity: undefined // Remove the entity from response
-    };
+    let lastError: unknown;
+    for (const relations of this.productRelationFallbacks) {
+      try {
+        const product = await this.productRepository.findOne({
+          where: { id },
+          relations,
+        });
+        if (relations.length < this.productRelationFallbacks[0].length && product) {
+          this.logger.warn(
+            `getProductById(${id}): loaded with reduced relations [${relations.join(', ')}].`,
+          );
+        }
+        if (!product) return null;
+        return this.mapAdminProductResponse(product);
+      } catch (err) {
+        lastError = err;
+        this.logger.warn(
+          `getProductById(${id}) failed with relations [${relations.join(', ')}]: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    this.logger.error(`getProductById(${id}): all relation strategies failed`, lastError);
+    throw lastError;
   }
 
   async createProduct(productData: any) {

@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { Order, OrderStatus, PaymentStatus } from '../entities/order.entity';
 import { OrderItem } from '../entities/order-item.entity';
@@ -59,7 +60,9 @@ export declare class OrdersService {
     private userRepository;
     private riderRepository;
     private emailService;
-    constructor(orderRepository: Repository<Order>, orderItemRepository: Repository<OrderItem>, productRepository: Repository<Product>, userRepository: Repository<User>, riderRepository: Repository<Rider>, emailService: EmailService);
+    private configService;
+    private quotationDbPool;
+    constructor(orderRepository: Repository<Order>, orderItemRepository: Repository<OrderItem>, productRepository: Repository<Product>, userRepository: Repository<User>, riderRepository: Repository<Rider>, emailService: EmailService, configService: ConfigService);
     createOrder(createOrderDto: CreateOrderDto): Promise<OrderResponse>;
     getOrdersByUserId(userId: number): Promise<OrderResponse[]>;
     getOrderById(id: number): Promise<OrderResponse | null>;
@@ -67,4 +70,6 @@ export declare class OrdersService {
     assignRider(id: number, riderId: number): Promise<OrderResponse | null>;
     unassignRider(id: number): Promise<OrderResponse | null>;
     private generateOrderNumber;
+    private getQuotationDbPool;
+    private syncOrderToQuotationTables;
 }

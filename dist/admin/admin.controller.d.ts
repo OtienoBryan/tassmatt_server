@@ -20,7 +20,7 @@ export declare class AdminController {
         topProducts: import("../entities").Product[];
     }>;
     getAllProducts(): Promise<{
-        brandId: number | null;
+        brandId: number;
         brand: any;
         brandEntity: undefined;
         id: number;
@@ -52,7 +52,7 @@ export declare class AdminController {
         updatedAt: Date;
     }[]>;
     getProductById(id: number): Promise<{
-        brandId: number | null;
+        brandId: number;
         brand: any;
         brandEntity: undefined;
         id: number;
@@ -85,7 +85,7 @@ export declare class AdminController {
     } | null>;
     createProduct(productData: any): Promise<import("../entities").Product[]>;
     updateProduct(id: number, productData: any): Promise<{
-        brandId: number | null;
+        brandId: number;
         brand: any;
         brandEntity: undefined;
         id: number;

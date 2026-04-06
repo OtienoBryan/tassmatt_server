@@ -15,7 +15,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrdersService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const config_1 = require("@nestjs/config");
 const typeorm_2 = require("typeorm");
+const promise_1 = require("mysql2/promise");
 const order_entity_1 = require("../entities/order.entity");
 const order_item_entity_1 = require("../entities/order-item.entity");
 const product_entity_1 = require("../entities/product.entity");
@@ -29,13 +31,16 @@ let OrdersService = class OrdersService {
     userRepository;
     riderRepository;
     emailService;
-    constructor(orderRepository, orderItemRepository, productRepository, userRepository, riderRepository, emailService) {
+    configService;
+    quotationDbPool = null;
+    constructor(orderRepository, orderItemRepository, productRepository, userRepository, riderRepository, emailService, configService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.riderRepository = riderRepository;
         this.emailService = emailService;
+        this.configService = configService;
     }
     async createOrder(createOrderDto) {
         console.log('Creating order with DTO:', JSON.stringify(createOrderDto, null, 2));
@@ -145,6 +150,12 @@ let OrdersService = class OrdersService {
                     },
                 });
             }
+            await this.syncOrderToQuotationTables({
+                savedOrder,
+                orderItems,
+                normalizedDto,
+                user,
+            });
             console.log('Order creation completed successfully');
             const orderResponse = {
                 id: savedOrder.id,
@@ -279,9 +290,9 @@ let OrdersService = class OrdersService {
                 price: item.price,
                 total: item.total,
                 product: {
-                    id: item.product.id,
-                    name: item.product.name,
-                    image: item.product.image,
+                    id: item.product?.id ?? item.productId,
+                    name: item.product?.name ?? 'Product unavailable',
+                    image: item.product?.image ?? '',
                 },
             })),
             createdAt: order.createdAt,
@@ -316,9 +327,9 @@ let OrdersService = class OrdersService {
                 price: item.price,
                 total: item.total,
                 product: {
-                    id: item.product.id,
-                    name: item.product.name,
-                    image: item.product.image,
+                    id: item.product?.id ?? item.productId,
+                    name: item.product?.name ?? 'Product unavailable',
+                    image: item.product?.image ?? '',
                 },
             })),
             createdAt: order.createdAt,
@@ -368,6 +379,175 @@ let OrdersService = class OrdersService {
         const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
         return `ORD-${timestamp.slice(-6)}-${random}`;
     }
+    getQuotationDbPool() {
+        if (this.quotationDbPool) {
+            return this.quotationDbPool;
+        }
+        const host = this.configService.get('QUOTATION_DB_HOST') ||
+            this.configService.get('DB2_HOST');
+        const port = Number(this.configService.get('QUOTATION_DB_PORT')) ||
+            Number(this.configService.get('DB2_PORT')) ||
+            3306;
+        const user = this.configService.get('QUOTATION_DB_USERNAME') ||
+            this.configService.get('DB2_USERNAME');
+        const password = this.configService.get('QUOTATION_DB_PASSWORD') ||
+            this.configService.get('DB2_PASSWORD');
+        const database = this.configService.get('QUOTATION_DB_DATABASE') ||
+            this.configService.get('DB2_DATABASE');
+        if (!host || !user || !password || !database) {
+            console.warn('Quotation DB env vars are missing. Set QUOTATION_DB_* (or DB2_*) to enable quotation sync.');
+            return null;
+        }
+        this.quotationDbPool = (0, promise_1.createPool)({
+            host,
+            port,
+            user,
+            password,
+            database,
+            waitForConnections: true,
+            connectionLimit: 5,
+            queueLimit: 0,
+            decimalNumbers: true,
+        });
+        return this.quotationDbPool;
+    }
+    async syncOrderToQuotationTables(params) {
+        const pool = this.getQuotationDbPool();
+        if (!pool) {
+            return;
+        }
+        const { savedOrder, orderItems, normalizedDto, user } = params;
+        const connection = await pool.getConnection();
+        const now = new Date().toISOString();
+        const today = new Date().toISOString().slice(0, 10);
+        const taxPercent = Number(normalizedDto.tax) > 0 && Number(normalizedDto.subtotal) > 0
+            ? Math.round((Number(normalizedDto.tax) / Number(normalizedDto.subtotal)) * 100)
+            : 0;
+        try {
+            await connection.beginTransaction();
+            const [quotationResult] = await connection.execute(`INSERT INTO quotation (
+          customer_id,
+          customer,
+          mobile,
+          comment,
+          comment2,
+          address,
+          total,
+          tax,
+          tax_type,
+          total_tax,
+          total_cost,
+          all_total,
+          discount,
+          percentage_discount,
+          discount_amount,
+          amount_paid,
+          balance,
+          staff,
+          currency,
+          currency_symbol,
+          \`date\`,
+          status,
+          \`view\`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+                user.id,
+                normalizedDto.customerName,
+                normalizedDto.customerPhone || '',
+                normalizedDto.notes || '',
+                '',
+                normalizedDto.shippingAddress || '',
+                Number(normalizedDto.subtotal),
+                taxPercent,
+                'percentage',
+                Number(normalizedDto.tax),
+                Number(normalizedDto.subtotal),
+                Number(normalizedDto.total),
+                0,
+                0,
+                0,
+                normalizedDto.paymentMethod === 'cash_on_delivery' ? 0 : Number(normalizedDto.total),
+                normalizedDto.paymentMethod === 'cash_on_delivery' ? Number(normalizedDto.total) : 0,
+                'Website Checkout',
+                'KES',
+                'KSh',
+                today,
+                0,
+                0,
+            ]);
+            const quoteId = quotationResult.insertId;
+            for (const item of orderItems) {
+                const [quotationItemResult] = await connection.execute(`INSERT INTO quotation_items (
+            quote_id,
+            customer_id,
+            sale_status,
+            product_id,
+            product_name,
+            unit_price,
+            quantity,
+            measure,
+            sub_total,
+            unit_buying,
+            sub_buying,
+            details,
+            image,
+            staff,
+            \`date\`
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+                    quoteId,
+                    user.id,
+                    0,
+                    item.productId,
+                    item.product.name || `Product ${item.productId}`,
+                    Number(item.price),
+                    Number(item.quantity),
+                    'pcs',
+                    Number(item.total),
+                    0,
+                    0,
+                    normalizedDto.notes || '',
+                    item.product.image || '',
+                    'Website Checkout',
+                    now,
+                ]);
+                const quoteItemId = quotationItemResult.insertId;
+                const referenceText = `${item.product.name || `Product ${item.productId}`} x${item.quantity}`;
+                await connection.execute(`INSERT INTO profoma (
+            invoice_id,
+            quote_id_items,
+            customer_id,
+            reference,
+            \`date\`,
+            tax,
+            amount_in,
+            amount_out,
+            sale_id,
+            status,
+            staff
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+                    quoteId,
+                    quoteItemId,
+                    user.id,
+                    referenceText,
+                    today,
+                    Number(normalizedDto.tax),
+                    Number(item.total),
+                    0,
+                    savedOrder.id,
+                    0,
+                    0,
+                ]);
+            }
+            await connection.commit();
+            console.log(`Quotation sync complete for order ${savedOrder.orderNumber} (quote_id: ${quoteId})`);
+        }
+        catch (error) {
+            await connection.rollback();
+            console.error(`Quotation sync failed for order ${savedOrder.orderNumber}: ${error?.message || error}`);
+        }
+        finally {
+            connection.release();
+        }
+    }
 };
 exports.OrdersService = OrdersService;
 exports.OrdersService = OrdersService = __decorate([
@@ -382,6 +562,7 @@ exports.OrdersService = OrdersService = __decorate([
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
-        email_service_1.EmailService])
+        email_service_1.EmailService,
+        config_1.ConfigService])
 ], OrdersService);
 //# sourceMappingURL=orders.service.js.map

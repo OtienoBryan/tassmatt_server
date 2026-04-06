@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var AdminService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminService = void 0;
 const common_1 = require("@nestjs/common");
@@ -26,7 +27,7 @@ const blog_entity_1 = require("../entities/blog.entity");
 const blog_category_entity_1 = require("../entities/blog-category.entity");
 const gallery_entity_1 = require("../entities/gallery.entity");
 const policy_entity_1 = require("../entities/policy.entity");
-let AdminService = class AdminService {
+let AdminService = AdminService_1 = class AdminService {
     productRepository;
     categoryRepository;
     orderRepository;
@@ -37,6 +38,14 @@ let AdminService = class AdminService {
     blogCategoryRepository;
     galleryRepository;
     policyRepository;
+    logger = new common_1.Logger(AdminService_1.name);
+    productRelationFallbacks = [
+        ['category', 'categories', 'brandEntity', 'subcategory'],
+        ['category', 'brandEntity', 'subcategory'],
+        ['category', 'brandEntity'],
+        ['category', 'categories'],
+        ['category'],
+    ];
     constructor(productRepository, categoryRepository, orderRepository, userRepository, brandRepository, subCategoryRepository, blogRepository, blogCategoryRepository, galleryRepository, policyRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
@@ -84,31 +93,57 @@ let AdminService = class AdminService {
             topProducts,
         };
     }
-    async getAllProducts() {
-        const products = await this.productRepository.find({
-            relations: ['category', 'categories', 'brandEntity', 'subcategory'],
-            order: { createdAt: 'DESC' },
-        });
-        return products.map(product => ({
-            ...product,
-            brandId: product.brandId || null,
-            brand: product.brand || (product.brandEntity ? product.brandEntity.name : ''),
-            brandEntity: undefined
-        }));
-    }
-    async getProductById(id) {
-        const product = await this.productRepository.findOne({
-            where: { id },
-            relations: ['category', 'categories', 'brandEntity', 'subcategory'],
-        });
-        if (!product)
-            return null;
+    mapAdminProductResponse(product) {
         return {
             ...product,
-            brandId: product.brandId || null,
+            brandId: product.brandId ?? null,
             brand: product.brand || (product.brandEntity ? product.brandEntity.name : ''),
-            brandEntity: undefined
+            brandEntity: undefined,
         };
+    }
+    async getAllProducts() {
+        let lastError;
+        for (const relations of this.productRelationFallbacks) {
+            try {
+                const products = await this.productRepository.find({
+                    relations,
+                    order: { createdAt: 'DESC' },
+                });
+                if (relations.length < this.productRelationFallbacks[0].length) {
+                    this.logger.warn(`getAllProducts: loaded with reduced relations [${relations.join(', ')}]. Align DB with entities (see database/schema.sql, product_categories, brands, subcategories).`);
+                }
+                return products.map((p) => this.mapAdminProductResponse(p));
+            }
+            catch (err) {
+                lastError = err;
+                this.logger.warn(`getAllProducts failed with relations [${relations.join(', ')}]: ${err instanceof Error ? err.message : String(err)}`);
+            }
+        }
+        this.logger.error('getAllProducts: all relation strategies failed', lastError);
+        throw lastError;
+    }
+    async getProductById(id) {
+        let lastError;
+        for (const relations of this.productRelationFallbacks) {
+            try {
+                const product = await this.productRepository.findOne({
+                    where: { id },
+                    relations,
+                });
+                if (relations.length < this.productRelationFallbacks[0].length && product) {
+                    this.logger.warn(`getProductById(${id}): loaded with reduced relations [${relations.join(', ')}].`);
+                }
+                if (!product)
+                    return null;
+                return this.mapAdminProductResponse(product);
+            }
+            catch (err) {
+                lastError = err;
+                this.logger.warn(`getProductById(${id}) failed with relations [${relations.join(', ')}]: ${err instanceof Error ? err.message : String(err)}`);
+            }
+        }
+        this.logger.error(`getProductById(${id}): all relation strategies failed`, lastError);
+        throw lastError;
     }
     async createProduct(productData) {
         console.log('  Processing brandId for product creation...');
@@ -541,7 +576,7 @@ let AdminService = class AdminService {
     }
 };
 exports.AdminService = AdminService;
-exports.AdminService = AdminService = __decorate([
+exports.AdminService = AdminService = AdminService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(product_entity_1.Product)),
     __param(1, (0, typeorm_1.InjectRepository)(category_entity_1.Category)),
