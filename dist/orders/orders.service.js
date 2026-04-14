@@ -109,9 +109,12 @@ let OrdersService = class OrdersService {
                 billingAddress: normalizedDto.billingAddress,
                 notes: normalizedDto.notes,
                 status: order_entity_1.OrderStatus.PENDING,
-                paymentStatus: normalizedDto.paymentMethod === 'cash_on_delivery'
+                paymentStatus: normalizedDto.paymentMethod === 'cash_on_delivery' ||
+                    normalizedDto.paymentMethod === 'mpesa_paybill' ||
+                    normalizedDto.paymentMethod === 'mpesa_stk'
                     ? order_entity_1.PaymentStatus.PENDING
                     : order_entity_1.PaymentStatus.PAID,
+                paymentMethod: normalizedDto.paymentMethod,
             });
             const savedOrder = await this.orderRepository.save(order);
             console.log('Order saved successfully with ID:', savedOrder.id);
@@ -465,8 +468,16 @@ let OrdersService = class OrdersService {
                 0,
                 0,
                 0,
-                normalizedDto.paymentMethod === 'cash_on_delivery' ? 0 : Number(normalizedDto.total),
-                normalizedDto.paymentMethod === 'cash_on_delivery' ? Number(normalizedDto.total) : 0,
+                normalizedDto.paymentMethod === 'cash_on_delivery' ||
+                    normalizedDto.paymentMethod === 'mpesa_paybill' ||
+                    normalizedDto.paymentMethod === 'mpesa_stk'
+                    ? 0
+                    : Number(normalizedDto.total),
+                normalizedDto.paymentMethod === 'cash_on_delivery' ||
+                    normalizedDto.paymentMethod === 'mpesa_paybill' ||
+                    normalizedDto.paymentMethod === 'mpesa_stk'
+                    ? Number(normalizedDto.total)
+                    : 0,
                 'Website Checkout',
                 'KES',
                 'KSh',

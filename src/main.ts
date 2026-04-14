@@ -15,6 +15,8 @@ async function bootstrap() {
       'https://www.shop.tassmatt.co.ke',
       'https://tassmatt.co.ke',
       'https://www.tassmatt.co.ke',
+      'https://api.tassmatt.co.ke',
+      'https://www.api.tassmatt.co.ke',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'user-id'],

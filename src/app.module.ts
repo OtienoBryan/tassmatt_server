@@ -17,6 +17,7 @@ import { GalleryModule } from './gallery/gallery.module';
 import { PoliciesModule } from './policies/policies.module';
 import { EmailModule } from './email/email.module';
 import { AuthModule } from './auth/auth.module';
+import { MpesaModule } from './mpesa/mpesa.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { AuthModule } from './auth/auth.module';
     PoliciesModule,
     EmailModule,
     AuthModule,
+    MpesaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

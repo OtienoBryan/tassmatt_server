@@ -29,6 +29,9 @@ export declare class Order {
     total: number;
     status: OrderStatus;
     paymentStatus: PaymentStatus;
+    paymentMethod: string | null;
+    mpesaCheckoutRequestId: string | null;
+    mpesaReceiptNumber: string | null;
     shippingAddress: string;
     billingAddress: string;
     notes: string;

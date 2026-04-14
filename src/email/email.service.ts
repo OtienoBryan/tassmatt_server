@@ -225,7 +225,13 @@ export class EmailService {
     const total = this.toMoney(orderData.total);
 
     const paymentMethodDisplay =
-      orderData.paymentMethod === 'paystack' ? 'Paystack (online)' : 'Cash on delivery';
+      orderData.paymentMethod === 'paystack'
+        ? 'Paystack (online)'
+        : orderData.paymentMethod === 'mpesa_paybill'
+          ? 'M-Pesa Paybill'
+          : orderData.paymentMethod === 'mpesa_stk'
+            ? 'M-Pesa STK (phone prompt)'
+            : 'Cash on delivery';
     const paymentStatusDisplay = orderData.paymentStatus === 'paid' ? 'Paid' : 'Pending';
 
     const rows = orderData.items
@@ -329,7 +335,14 @@ export class EmailService {
       )
       .join('');
 
-    const paymentMethodDisplay = orderData.paymentMethod === 'paystack' ? 'Paystack (Online Payment)' : 'Cash on Delivery';
+    const paymentMethodDisplay =
+      orderData.paymentMethod === 'paystack'
+        ? 'Paystack (Online Payment)'
+        : orderData.paymentMethod === 'mpesa_paybill'
+          ? 'M-Pesa Paybill'
+          : orderData.paymentMethod === 'mpesa_stk'
+            ? 'M-Pesa STK (Push)'
+            : 'Cash on Delivery';
     const paymentStatusDisplay = orderData.paymentStatus === 'paid' ? 'Paid' : 'Pending';
 
     return `

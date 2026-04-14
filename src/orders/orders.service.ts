@@ -167,9 +167,13 @@ export class OrdersService {
         billingAddress: normalizedDto.billingAddress,
         notes: normalizedDto.notes,
         status: OrderStatus.PENDING,
-        paymentStatus: normalizedDto.paymentMethod === 'cash_on_delivery' 
-          ? PaymentStatus.PENDING 
-          : PaymentStatus.PAID,
+        paymentStatus:
+          normalizedDto.paymentMethod === 'cash_on_delivery' ||
+          normalizedDto.paymentMethod === 'mpesa_paybill' ||
+          normalizedDto.paymentMethod === 'mpesa_stk'
+            ? PaymentStatus.PENDING
+            : PaymentStatus.PAID,
+        paymentMethod: normalizedDto.paymentMethod,
       });
 
       const savedOrder = await this.orderRepository.save(order);
@@ -605,8 +609,16 @@ export class OrdersService {
           0,
           0,
           0,
-          normalizedDto.paymentMethod === 'cash_on_delivery' ? 0 : Number(normalizedDto.total),
-          normalizedDto.paymentMethod === 'cash_on_delivery' ? Number(normalizedDto.total) : 0,
+          normalizedDto.paymentMethod === 'cash_on_delivery' ||
+          normalizedDto.paymentMethod === 'mpesa_paybill' ||
+          normalizedDto.paymentMethod === 'mpesa_stk'
+            ? 0
+            : Number(normalizedDto.total),
+          normalizedDto.paymentMethod === 'cash_on_delivery' ||
+          normalizedDto.paymentMethod === 'mpesa_paybill' ||
+          normalizedDto.paymentMethod === 'mpesa_stk'
+            ? Number(normalizedDto.total)
+            : 0,
           'Website Checkout',
           'KES',
           'KSh',

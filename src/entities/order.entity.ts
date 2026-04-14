@@ -57,6 +57,15 @@ export class Order {
   @Column({ type: 'enum', enum: PaymentStatus, default: PaymentStatus.PENDING })
   paymentStatus: PaymentStatus;
 
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  paymentMethod: string | null;
+
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  mpesaCheckoutRequestId: string | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  mpesaReceiptNumber: string | null;
+
   @Column({ nullable: true })
   shippingAddress: string;
 

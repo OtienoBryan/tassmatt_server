@@ -44,6 +44,9 @@ let Order = class Order {
     total;
     status;
     paymentStatus;
+    paymentMethod;
+    mpesaCheckoutRequestId;
+    mpesaReceiptNumber;
     shippingAddress;
     billingAddress;
     notes;
@@ -99,6 +102,18 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'enum', enum: PaymentStatus, default: PaymentStatus.PENDING }),
     __metadata("design:type", String)
 ], Order.prototype, "paymentStatus", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 64, nullable: true }),
+    __metadata("design:type", Object)
+], Order.prototype, "paymentMethod", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 128, nullable: true }),
+    __metadata("design:type", Object)
+], Order.prototype, "mpesaCheckoutRequestId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 64, nullable: true }),
+    __metadata("design:type", Object)
+], Order.prototype, "mpesaReceiptNumber", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
