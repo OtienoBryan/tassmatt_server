@@ -290,10 +290,274 @@ export class EmailService {
 </body></html>`;
   }
 
+  // ─── Quotation email ─────────────────────────────────────────────────────
+
+  async sendQuotation(data: {
+    customerName: string;
+    customerEmail: string;
+    customerPhone?: string;
+    deliveryAddress?: string;
+    notes?: string;
+    items: Array<{
+      productName: string;
+      quantity: number;
+      unitPrice: number;
+      lineTotal: number;
+    }>;
+    subtotal: number;
+    tax: number;
+    total: number;
+    quotationRef: string;
+    validDays?: number;
+  }): Promise<void> {
+    if (!this.resend) {
+      console.warn('⚠️ Resend not initialized. Cannot send quotation email.');
+      return;
+    }
+    if (!data.customerEmail) {
+      console.warn('⚠️ Quotation: customer email missing. Skipping.');
+      return;
+    }
+
+    const html = this.generateQuotationEmail(data);
+
+    // Send to customer
+    await this.resend.emails.send({
+      from: this.fromEmail,
+      to: data.customerEmail,
+      subject: `Quotation ${data.quotationRef} — Tassmatt`,
+      html,
+    });
+    console.log(`✅ Quotation email sent to customer ${data.customerEmail}`);
+
+    // CC staff
+    const staffTo = this.staffOrderNotifyEmail;
+    if (staffTo) {
+      const ccSame =
+        this.staffOrderNotifyCcEmail &&
+        this.staffOrderNotifyCcEmail.toLowerCase() === staffTo.toLowerCase();
+      await this.resend.emails.send({
+        from: this.fromEmail,
+        to: staffTo,
+        ...(this.staffOrderNotifyCcEmail && !ccSame
+          ? { cc: [this.staffOrderNotifyCcEmail] }
+          : {}),
+        subject: `New quotation request — ${data.quotationRef} (${data.customerName})`,
+        html,
+      });
+      console.log(`✅ Quotation staff copy sent to ${staffTo}`);
+    }
+  }
+
+  private generateQuotationEmail(data: {
+    customerName: string;
+    customerEmail: string;
+    customerPhone?: string;
+    deliveryAddress?: string;
+    notes?: string;
+    items: Array<{
+      productName: string;
+      quantity: number;
+      unitPrice: number;
+      lineTotal: number;
+    }>;
+    subtotal: number;
+    tax: number;
+    total: number;
+    quotationRef: string;
+    validDays?: number;
+  }): string {
+    const validDays = data.validDays ?? 7;
+    const validUntil = new Date();
+    validUntil.setDate(validUntil.getDate() + validDays);
+    const validUntilStr = validUntil.toLocaleDateString('en-KE', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+
+    const subtotal = this.toMoney(data.subtotal);
+    const tax = this.toMoney(data.tax);
+    const total = this.toMoney(data.total);
+
+    const itemRows = data.items
+      .map(
+        (item) => `
+      <tr>
+        <td style="padding:10px 12px;border-bottom:1px solid #f0ebe8;font-size:14px;color:#333;">${this.escapeHtml(item.productName)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #f0ebe8;font-size:14px;color:#333;text-align:center;">${item.quantity}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #f0ebe8;font-size:14px;color:#333;text-align:right;">KES ${this.formatKes(this.toMoney(item.unitPrice))}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #f0ebe8;font-size:14px;color:#333;text-align:right;font-weight:600;">KES ${this.formatKes(this.toMoney(item.lineTotal))}</td>
+      </tr>`,
+      )
+      .join('');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#f5f0ee;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0ee;padding:32px 16px;">
+  <tr><td align="center">
+    <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+
+      <!-- Header -->
+      <tr>
+        <td style="background:#8B1538;padding:32px 40px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>
+                <h1 style="margin:0;color:#ffffff;font-size:26px;letter-spacing:1px;">Tassmatt Agencies</h1>
+              </td>
+              <td align="right">
+                <p style="margin:0;color:#f8e8ec;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Quotation</p>
+                <p style="margin:4px 0 0;color:#ffffff;font-size:18px;font-weight:700;">${this.escapeHtml(data.quotationRef)}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Meta row -->
+      <tr>
+        <td style="background:#fdf8f6;padding:20px 40px;border-bottom:1px solid #f0ebe8;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:50%;vertical-align:top;">
+                <p style="margin:0 0 4px;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;">Prepared for</p>
+                <p style="margin:0;font-size:15px;font-weight:700;color:#1a1a1a;">${this.escapeHtml(data.customerName)}</p>
+                <p style="margin:2px 0 0;font-size:13px;color:#555;">${this.escapeHtml(data.customerEmail)}</p>
+                ${data.customerPhone ? `<p style="margin:2px 0 0;font-size:13px;color:#555;">${this.escapeHtml(data.customerPhone)}</p>` : ''}
+                ${data.deliveryAddress ? `<p style="margin:6px 0 0;font-size:13px;color:#555;">${this.escapeHtml(data.deliveryAddress)}</p>` : ''}
+              </td>
+              <td style="width:50%;vertical-align:top;text-align:right;">
+                <p style="margin:0 0 4px;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;">Date issued</p>
+                <p style="margin:0;font-size:14px;color:#333;">${new Date().toLocaleDateString('en-KE', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                <p style="margin:12px 0 4px;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;">Valid until</p>
+                <p style="margin:0;font-size:14px;color:#8B1538;font-weight:700;">${validUntilStr}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Items table -->
+      <tr>
+        <td style="padding:32px 40px 0;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+            <thead>
+              <tr style="background:#8B1538;">
+                <th style="padding:10px 12px;font-size:12px;color:#fff;text-align:left;text-transform:uppercase;letter-spacing:0.5px;border-radius:4px 0 0 0;">Description</th>
+                <th style="padding:10px 12px;font-size:12px;color:#fff;text-align:center;text-transform:uppercase;letter-spacing:0.5px;">Qty</th>
+                <th style="padding:10px 12px;font-size:12px;color:#fff;text-align:right;text-transform:uppercase;letter-spacing:0.5px;">Unit Price</th>
+                <th style="padding:10px 12px;font-size:12px;color:#fff;text-align:right;text-transform:uppercase;letter-spacing:0.5px;border-radius:0 4px 0 0;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemRows}
+            </tbody>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Totals -->
+      <tr>
+        <td style="padding:0 40px 32px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
+            <tr>
+              <td style="padding:6px 0;font-size:13px;color:#666;text-align:right;width:75%;">Subtotal (incl. VAT)</td>
+              <td style="padding:6px 0 6px 16px;font-size:13px;color:#333;text-align:right;font-weight:600;">KES ${this.formatKes(subtotal)}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;font-size:12px;color:#999;text-align:right;">VAT (included @ 16%)</td>
+              <td style="padding:4px 0 4px 16px;font-size:12px;color:#999;text-align:right;">KES ${this.formatKes(tax)}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;font-size:12px;color:#999;text-align:right;">Shipping / Delivery</td>
+              <td style="padding:4px 0 4px 16px;font-size:12px;color:#999;text-align:right;">To be confirmed</td>
+            </tr>
+            <tr>
+              <td colspan="2"><hr style="border:none;border-top:2px solid #8B1538;margin:10px 0;"/></td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;font-size:17px;font-weight:700;color:#8B1538;text-align:right;">Grand Total</td>
+              <td style="padding:6px 0 6px 16px;font-size:17px;font-weight:700;color:#8B1538;text-align:right;">KES ${this.formatKes(total)}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      ${data.notes ? `
+      <!-- Notes -->
+      <tr>
+        <td style="padding:0 40px 24px;">
+          <div style="background:#fdf8f6;border-left:4px solid #8B1538;padding:14px 18px;border-radius:0 6px 6px 0;">
+            <p style="margin:0 0 4px;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;">Additional notes</p>
+            <p style="margin:0;font-size:13px;color:#555;white-space:pre-wrap;">${this.escapeHtml(data.notes)}</p>
+          </div>
+        </td>
+      </tr>` : ''}
+
+      <!-- Terms -->
+      <tr>
+        <td style="padding:0 40px 32px;">
+          <p style="margin:0;font-size:12px;color:#aaa;line-height:1.7;">
+            This quotation is valid for <strong>${validDays} days</strong> from the date of issue.
+            Prices are inclusive of VAT. Delivery charges will be confirmed separately.
+            To accept and convert this to an order, reply to this email or contact us directly.
+          </p>
+        </td>
+      </tr>
+
+      <!-- Footer -->
+      <tr>
+        <td style="background:#1a1a1a;padding:28px 40px;text-align:center;">
+          <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#ffffff;letter-spacing:0.5px;">Tassmatt Agencies Ltd</p>
+          <p style="margin:0 0 10px;font-size:12px;color:#aaa;">Premium Beverages &amp; More</p>
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center">
+                <table cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="padding:0 12px;border-right:1px solid #444;">
+                      <a href="mailto:orders@tassmatt.co.ke" style="color:#f0d0d8;font-size:12px;text-decoration:none;">orders@tassmatt.co.ke</a>
+                    </td>
+                    <td style="padding:0 12px;border-right:1px solid #444;">
+                      <a href="tel:+254726410068" style="color:#f0d0d8;font-size:12px;text-decoration:none;">+254 726 410 068</a>
+                    </td>
+                    <td style="padding:0 12px;border-right:1px solid #444;">
+                      <a href="https://wa.me/254726410068" style="color:#f0d0d8;font-size:12px;text-decoration:none;">WhatsApp</a>
+                    </td>
+                    <td style="padding:0 12px;">
+                      <a href="https://shop.tassmatt.co.ke" style="color:#f0d0d8;font-size:12px;text-decoration:none;">shop.tassmatt.co.ke</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:14px 0 0;font-size:11px;color:#666;">Nairobi, Kenya &nbsp;|&nbsp; Mon – Sat 8 AM – 6 PM</p>
+        </td>
+      </tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+  }
+
   /** Coerce DB/API decimals (often strings) to a number for formatting. */
   private toMoney(value: unknown): number {
     const n = typeof value === 'number' ? value : parseFloat(String(value ?? 0));
     return Number.isFinite(n) ? n : 0;
+  }
+
+  /** Format a number as KES with comma thousands separator, e.g. 1,234,567.00 */
+  private formatKes(value: number): string {
+    return value.toLocaleString('en-KE', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   }
 
   private generateOrderConfirmationEmail(orderData: {

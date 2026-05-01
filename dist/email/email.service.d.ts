@@ -45,6 +45,26 @@ export declare class EmailService {
     }): Promise<void>;
     private escapeHtml;
     private generateStaffNewOrderEmail;
+    sendQuotation(data: {
+        customerName: string;
+        customerEmail: string;
+        customerPhone?: string;
+        deliveryAddress?: string;
+        notes?: string;
+        items: Array<{
+            productName: string;
+            quantity: number;
+            unitPrice: number;
+            lineTotal: number;
+        }>;
+        subtotal: number;
+        tax: number;
+        total: number;
+        quotationRef: string;
+        validDays?: number;
+    }): Promise<void>;
+    private generateQuotationEmail;
     private toMoney;
+    private formatKes;
     private generateOrderConfirmationEmail;
 }

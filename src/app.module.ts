@@ -18,6 +18,7 @@ import { PoliciesModule } from './policies/policies.module';
 import { EmailModule } from './email/email.module';
 import { AuthModule } from './auth/auth.module';
 import { MpesaModule } from './mpesa/mpesa.module';
+import { QuotationModule } from './quotation/quotation.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { MpesaModule } from './mpesa/mpesa.module';
     EmailModule,
     AuthModule,
     MpesaModule,
+    QuotationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
