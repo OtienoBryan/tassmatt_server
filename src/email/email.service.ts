@@ -528,7 +528,7 @@ export class EmailService {
                       <a href="https://wa.me/254726410068" style="color:#f0d0d8;font-size:12px;text-decoration:none;">WhatsApp</a>
                     </td>
                     <td style="padding:0 12px;">
-                      <a href="https://shop.tassmatt.co.ke" style="color:#f0d0d8;font-size:12px;text-decoration:none;">shop.tassmatt.co.ke</a>
+                      <a href="https://www.tassmatt.co.ke" style="color:#f0d0d8;font-size:12px;text-decoration:none;">www.tassmatt.co.ke</a>
                     </td>
                   </tr>
                 </table>
